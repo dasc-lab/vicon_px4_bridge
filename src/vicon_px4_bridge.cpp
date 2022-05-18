@@ -42,7 +42,8 @@ public:
 		timesync_sub_ =
 		this->create_subscription<px4_msgs::msg::Timesync>(timesync_sub_name, 10,
 			[this](const px4_msgs::msg::Timesync::UniquePtr msg) {
-				timestamp_.store(msg->timestamp);
+				this->px4_timestamp_.store(msg->timestamp);
+    			this->px4_server_timestamp_.store(this->get_clock()->now().nanoseconds());
 			});
 	}
 
@@ -51,7 +52,8 @@ private:
 	rclcpp::Publisher<px4_msgs::msg::VehicleVisualOdometry>::SharedPtr odometry_pub_;
 	rclcpp::Subscription<vicon_receiver::msg::Position>::SharedPtr position_sub_;
 	rclcpp::Subscription<px4_msgs::msg::Timesync>::SharedPtr timesync_sub_;
-	std::atomic<uint64_t> timestamp_;
+	std::atomic<uint64_t> px4_timestamp_;
+	std::atomic<uint64_t> px4_server_timestamp_;
 	float _ref_lat = 42.2944420 * M_PI / 180.0;
 	float _ref_lon = -83.7104540 * M_PI / 180.0;
 	float _ref_sin_lat = sin(_ref_lat);
@@ -65,10 +67,19 @@ private:
 	//   {0, 0, -1}
 	// };
 
-	void position_topic_callback(const vicon_receiver::msg::Position & position) const {
+	uint64_t get_current_timestamp() {
+		auto delta = (this->get_clock()->now().nanoseconds() - this->px4_server_timestamp_) / 1e6;
+		// RCLCPP_INFO(this->get_logger(), "px4: %lu", px4_timestamp_.load());
+		// RCLCPP_INFO(this->get_logger(), "delta: %lu", delta);
+		// RCLCPP_INFO(this->get_logger(), "time: %lu", px4_timestamp_.load() + delta);
+		return px4_timestamp_.load() + delta;
+	}
+
+	void position_topic_callback(const vicon_receiver::msg::Position & position) {
 		auto message = px4_msgs::msg::VehicleVisualOdometry();
-		message.timestamp = timestamp_.load();
-		message.timestamp_sample = timestamp_.load();
+		auto timestamp = get_current_timestamp();
+		message.timestamp = timestamp;
+		message.timestamp_sample = timestamp;
 		message.local_frame = px4_msgs::msg::VehicleVisualOdometry::LOCAL_FRAME_NED;
 		message.x = position.y_trans / 1000.0;
 		message.y = position.x_trans / 1000.0;
@@ -155,14 +166,14 @@ private:
 		}
 	}
 
-	void rover_position_callback(const vicon_receiver::msg::Position & position) const {
+	void rover_position_callback(const vicon_receiver::msg::Position & position) {
 		double lat = NAN, lon = NAN;
 		reproject(position.y_trans / 1000.0, position.x_trans / 1000.0, lat, lon);
 		tf2::Quaternion tf2_vicon(position.x_rot, position.y_rot, position.z_rot, position.w);
 		auto yaw = tf2::getYaw(tf2_vicon);
 		auto yaw_ned = -yaw + 1.57;
 		auto gps_msg = px4_msgs::msg::SensorGps();
-		gps_msg.timestamp = timestamp_.load();
+		gps_msg.timestamp = get_current_timestamp();
 		gps_msg.device_id = 0;
 		gps_msg.lat = lat * 1e7;
 		gps_msg.lon = lon * 1e7;
