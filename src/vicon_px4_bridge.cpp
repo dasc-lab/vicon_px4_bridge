@@ -29,14 +29,16 @@ public:
 		RCLCPP_INFO(this->get_logger(), "timesync_sub_name: %s \n", timesync_sub_name.c_str());
 		RCLCPP_INFO(this->get_logger(), "px4_pub_name: %s \n", px4_pub_name.c_str());
 		RCLCPP_INFO(this->get_logger(), "px4_gps_pub_name: %s \n", px4_gps_pub_name.c_str());
-		if (px4_name.find("rover") != std::string::npos) {
-			RCLCPP_INFO(this->get_logger(), "Using rover callback!");
-			position_sub_ = this->create_subscription<vicon_receiver::msg::Position>(vicon_sub_name, 10, std::bind(&ViconPX4Bridge::rover_position_callback, this, _1));
-		}
-		else {
-			RCLCPP_INFO(this->get_logger(), "Using drone callback!");
-			position_sub_ = this->create_subscription<vicon_receiver::msg::Position>(vicon_sub_name, 10, std::bind(&ViconPX4Bridge::position_topic_callback, this, _1));
-		}
+		// if (px4_name.find("rover") != std::string::npos) {
+		// 	RCLCPP_INFO(this->get_logger(), "Using rover callback!");
+		// 	position_sub_ = this->create_subscription<vicon_receiver::msg::Position>(vicon_sub_name, 10, std::bind(&ViconPX4Bridge::rover_position_callback, this, _1));
+		// }
+		// else {
+		// 	RCLCPP_INFO(this->get_logger(), "Using drone callback!");
+		// 	position_sub_ = this->create_subscription<vicon_receiver::msg::Position>(vicon_sub_name, 10, std::bind(&ViconPX4Bridge::position_topic_callback, this, _1));
+		// }
+		RCLCPP_INFO(this->get_logger(), "Using Vicon -> Visual Odometry callback!");
+		position_sub_ = this->create_subscription<vicon_receiver::msg::Position>(vicon_sub_name, 10, std::bind(&ViconPX4Bridge::position_topic_callback, this, _1));
 		odometry_pub_ = this->create_publisher<px4_msgs::msg::VehicleVisualOdometry>(px4_pub_name, 10);
 		gps_pub_ = this->create_publisher<px4_msgs::msg::SensorGps>(px4_gps_pub_name, 10);
 		timesync_sub_ =
@@ -141,6 +143,8 @@ private:
 		message.velocity_covariance[0] = NAN;
 		message.velocity_covariance[15] = NAN;
 		message.reset_counter = 0;
+
+		// std::cout << "publishing pose" << std::endl;
 		odometry_pub_->publish(message);
 	}
 
@@ -182,8 +186,8 @@ private:
 		gps_msg.s_variance_m_s = 0.1;
 		gps_msg.c_variance_rad = 0.05;
 		gps_msg.fix_type = 5;
-		gps_msg.eph = 0.02;
-		gps_msg.epv = 0.02;
+		gps_msg.eph = 0.02;//0.02;
+		gps_msg.epv = 0.02;//0.02;
 		gps_msg.hdop = 1.0;
 		gps_msg.vdop = 1.0;
 		gps_msg.noise_per_ms = 101;
@@ -199,7 +203,7 @@ private:
 		gps_msg.satellites_used = 12;
 		gps_msg.heading = yaw_ned;
 		gps_msg.heading_offset = 0.0;
-		gps_msg.heading_accuracy = 0.02;
+		gps_msg.heading_accuracy = 0.2;
 		gps_pub_->publish(gps_msg);
 	}
 };

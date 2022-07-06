@@ -3,7 +3,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
 
-    hostname = '192.168.2.137'
+    hostname = '192.168.2.136' #'192.168.1.194'
     buffer_size = 10
     topic_namespace = 'vicon'
 
@@ -14,22 +14,26 @@ def generate_launch_description():
         ),
         Node(
             package='vicon_px4_bridge', executable='bridge', output='screen',
-            parameters=[{'px4_name': 'drone1', 'vicon_name': 'drone1'}]
-        ),
-        Node(
-            package='vicon_px4_bridge', executable='bridge', output='screen',
-            parameters=[{'px4_name': 'drone2', 'vicon_name': 'drone2'}]
-        ),
-        Node(
-            package='vicon_px4_bridge', executable='bridge', output='screen',
-            parameters=[{'px4_name': 'drone3', 'vicon_name': 'drone3'}]
-        ),
-        Node(
-            package='vicon_px4_bridge', executable='bridge', output='screen',
-            parameters=[{'px4_name': 'drone4', 'vicon_name': 'drone4'}]
-        ),
-        Node(
-            package='vicon_px4_bridge', executable='bridge', output='screen',
-            parameters=[{'px4_name': 'drone5', 'vicon_name': 'drone5'}]
+            parameters=[{'px4_name': 'rover3', 'vicon_name': 'rover3'}]
         )
+        Node(
+            package='vicon_px4_bridge', executable='bridge', output='screen',
+            parameters=[{'px4_name': 'rover2', 'vicon_name': 'rover2'}]
+        )
+        # Node(
+        #     package='vicon_px4_bridge', executable='bridge', output='screen',
+        #     parameters=[{'px4_name': 'drone2', 'vicon_name': 'drone2'}]
+        # ),
+        # Node(
+        #     package='vicon_px4_bridge', executable='bridge', output='screen',
+        #     parameters=[{'px4_name': 'drone3', 'vicon_name': 'drone3'}]
+        # ),
+        # Node(
+        #     package='vicon_px4_bridge', executable='bridge', output='screen',
+        #     parameters=[{'px4_name': 'drone4', 'vicon_name': 'drone4'}]
+        # ),
+        # Node(
+        #     package='vicon_px4_bridge', executable='bridge', output='screen',
+        #     parameters=[{'px4_name': 'drone5', 'vicon_name': 'drone5'}]
+        # )
         ])
