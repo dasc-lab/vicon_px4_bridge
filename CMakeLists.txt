@@ -19,9 +19,10 @@ find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3)
+find_package(tf2_ros REQUIRED)
 
 add_executable(bridge src/vicon_px4_bridge.cpp)
-ament_target_dependencies(bridge rclcpp std_msgs tf2 px4_msgs vicon_receiver Eigen3)
+ament_target_dependencies(bridge rclcpp std_msgs tf2 px4_msgs vicon_receiver tf2_ros Eigen3)
 
 ament_export_dependencies(eigen3_cmake_module)
 ament_export_dependencies(Eigen3)
