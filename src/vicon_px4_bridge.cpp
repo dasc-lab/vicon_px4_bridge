@@ -9,6 +9,9 @@
 #include <Eigen/Geometry>
 //#include "px4_ros_com/frame_transforms.h"
 
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+
 using namespace std::chrono_literals;
 using std::placeholders::_1;
 
@@ -18,7 +21,7 @@ public:
 	ViconPX4Bridge() : Node("vicon_px4_bridge") {
 		this->declare_parameter<std::string>("px4_name", "drone1");
 		this->declare_parameter<std::string>("vicon_name", "drone1");
-		std::string px4_name, vicon_name;
+		std::string vicon_name;
 		this->get_parameter("px4_name", px4_name);
 		this->get_parameter("vicon_name", vicon_name);
 		std::string vicon_sub_name = "vicon/" + vicon_name + "/" + vicon_name;
@@ -47,12 +50,22 @@ public:
 				this->px4_timestamp_.store(msg->timestamp);
     			this->px4_server_timestamp_.store(this->get_clock()->now().nanoseconds());
 			});
+    
+    tf_broadcaster_ =
+      std::make_unique<tf2_ros::TransformBroadcaster>(*this);
 	}
 
 private:
+
+  std::string px4_name;
+
+
 	rclcpp::Publisher<px4_msgs::msg::SensorGps>::SharedPtr gps_pub_;
 	rclcpp::Publisher<px4_msgs::msg::VehicleVisualOdometry>::SharedPtr odometry_pub_;
-	rclcpp::Subscription<vicon_receiver::msg::Position>::SharedPtr position_sub_;
+  
+  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
+  
+  rclcpp::Subscription<vicon_receiver::msg::Position>::SharedPtr position_sub_;
 	rclcpp::Subscription<px4_msgs::msg::Timesync>::SharedPtr timesync_sub_;
 	std::atomic<uint64_t> px4_timestamp_;
 	std::atomic<uint64_t> px4_server_timestamp_;
@@ -145,7 +158,25 @@ private:
 		message.reset_counter = 0;
 
 		// std::cout << "publishing pose" << std::endl;
-		odometry_pub_->publish(message);
+    odometry_pub_->publish(message);
+
+    // publish the tf transform
+    geometry_msgs::msg::TransformStamped _tf;
+    _tf.header.stamp = this->get_clock()->now();
+    _tf.header.frame_id = "world";
+    _tf.child_frame_id = ("vicon/" + px4_name).c_str();
+
+    _tf.transform.translation.x = position.x_trans / 1000.0;
+    _tf.transform.translation.y = position.y_trans / 1000.0;
+    _tf.transform.translation.z = position.z_trans / 1000.0;
+
+    _tf.transform.rotation.x = position.x_rot;
+    _tf.transform.rotation.y = position.y_rot;
+    _tf.transform.rotation.z = position.z_rot;
+    _tf.transform.rotation.w = position.w;
+
+    tf_broadcaster_->sendTransform(_tf);
+
 	}
 
 	void reproject(float x, float y, double &lat, double &lon) const
