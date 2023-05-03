@@ -12,10 +12,10 @@ def create_bridge_node(robot_name):
 def generate_launch_description():
 
     hostname = '192.168.1.194' # ip address of vicon computer 
-    buffer_size = 10
+    buffer_size = 200
     topic_namespace = 'vicon'
 
-    robots = ['visquad1']
+    robots = ['px4_1']
 
     bridge_nodes = [create_bridge_node(r) for r in robots]
 
