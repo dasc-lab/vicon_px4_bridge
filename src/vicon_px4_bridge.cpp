@@ -1,15 +1,11 @@
-#include "vicon_receiver/msg/position.hpp"
+#include "geometry_msgs/msg/transform_stamped.hpp"
 #include <Eigen/Eigen>
 #include <Eigen/Geometry>
 #include <chrono>
-//#include <px4_msgs/msg/sensor_gps.hpp>
 #include <px4_msgs/msg/timesync_status.hpp>
 #include <px4_msgs/msg/vehicle_odometry.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/utils.h>
-
-#include <geometry_msgs/msg/transform_stamped.hpp>
-#include <tf2_ros/transform_broadcaster.h>
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
@@ -36,12 +32,9 @@ public:
     RCLCPP_INFO(this->get_logger(), "Using Vicon -> Visual Odometry callback!");
     
     
-    position_sub_ = this->create_subscription<vicon_receiver::msg::Position>(
+    position_sub_ = this->create_subscription<geometry_msgs::msg::TransformStamped>(
         vicon_sub_name, 10,
-	[this](const vicon_receiver::msg::Position::UniquePtr msg) {
-		this->position_topic_callback(*msg);
-		}
-		);
+	std::bind(&ViconPX4Bridge::position_callback, this, _1));
 
     odometry_pub_ =
         this->create_publisher<px4_msgs::msg::VehicleOdometry>(
@@ -62,15 +55,10 @@ private:
   rclcpp::Publisher<px4_msgs::msg::VehicleOdometry>::SharedPtr
       odometry_pub_;
 
-  rclcpp::Subscription<vicon_receiver::msg::Position>::SharedPtr position_sub_;
+  rclcpp::Subscription<geometry_msgs::msg::TransformStamped>::SharedPtr position_sub_;
   rclcpp::Subscription<px4_msgs::msg::TimesyncStatus>::SharedPtr timesync_sub_;
   std::atomic<uint64_t> px4_timestamp_;
   std::atomic<uint64_t> px4_server_timestamp_;
-  float _ref_lat = 42.2944420 * M_PI / 180.0;
-  float _ref_lon = -83.7104540 * M_PI / 180.0;
-  float _ref_sin_lat = sin(_ref_lat);
-  float _ref_cos_lat = cos(_ref_lat);
-  static constexpr double CONSTANTS_RADIUS_OF_EARTH = 6371000;
 
   uint64_t get_current_timestamp() {
     auto delta =
@@ -79,7 +67,7 @@ private:
     return px4_timestamp_.load() + delta;
   }
 
-  void position_topic_callback(const vicon_receiver::msg::Position &position) {
+  void position_callback(const geometry_msgs::msg::TransformStamped &vicon_msg) {
     auto message = px4_msgs::msg::VehicleOdometry();
 
     // timestamps
@@ -91,13 +79,13 @@ private:
     message.pose_frame = px4_msgs::msg::VehicleOdometry::POSE_FRAME_NED;
 
     //position
-    message.position[0] = position.y_trans / 1000.0;
-    message.position[1] = position.x_trans / 1000.0;
-    message.position[2] = -position.z_trans / 1000.0;
+    message.position[0] = vicon_msg.transform.translation.y;
+    message.position[1] = vicon_msg.transform.translation.x;
+    message.position[2] = -vicon_msg.transform.translation.z;
 
     // quaternion
-    tf2::Quaternion tf2_vicon(position.x_rot, position.y_rot, position.z_rot,
-                              position.w);
+    auto q_vicon = vicon_msg.transform.rotation;
+    tf2::Quaternion tf2_vicon(q_vicon.x, q_vicon.y, q_vicon.z, q_vicon.w);
     auto yaw = tf2::getYaw(tf2_vicon);
     auto yaw_ned = -yaw + 1.57;
     Eigen::Quaternion<double> out(cos(yaw_ned / 2.0), 0, 0, sin(yaw_ned / 2.0));
@@ -135,67 +123,6 @@ private:
 
   }
 
-  // void reproject(float x, float y, double &lat, double &lon) const {
-  //   const double x_rad = (double)x / CONSTANTS_RADIUS_OF_EARTH;
-  //   const double y_rad = (double)y / CONSTANTS_RADIUS_OF_EARTH;
-  //   const double c = sqrt(x_rad * x_rad + y_rad * y_rad);
-
-  //   if (fabs(c) > 0) {
-  //     const double sin_c = sin(c);
-  //     const double cos_c = cos(c);
-
-  //     const double lat_rad =
-  //         asin(cos_c * _ref_sin_lat + (x_rad * sin_c * _ref_cos_lat) / c);
-  //     const double lon_rad =
-  //         (_ref_lon + atan2(y_rad * sin_c, c * _ref_cos_lat * cos_c -
-  //                                              x_rad * _ref_sin_lat * sin_c));
-
-  //     lat = lat_rad * 180.0 / M_PI;
-  //     lon = lon_rad * 180.0 / M_PI;
-
-  //   } else {
-  //     lat = _ref_lat * 180.0 / M_PI;
-  //     lon = _ref_lon * 180.0 / M_PI;
-  //   }
-  // }
-
-  //void rover_position_callback(const vicon_receiver::msg::Position &position) {
-  //  double lat = NAN, lon = NAN;
-  //  reproject(position.y_trans / 1000.0, position.x_trans / 1000.0, lat, lon);
-  //  tf2::Quaternion tf2_vicon(position.x_rot, position.y_rot, position.z_rot,
-  //                            position.w);
-  //  auto yaw = tf2::getYaw(tf2_vicon);
-  //  auto yaw_ned = -yaw + 1.57;
-  //  auto gps_msg = px4_msgs::msg::SensorGps();
-  //  gps_msg.timestamp = get_current_timestamp();
-  //  gps_msg.device_id = 0;
-  //  gps_msg.lat = lat * 1e7;
-  //  gps_msg.lon = lon * 1e7;
-  //  gps_msg.alt = position.z_trans;
-  //  gps_msg.alt_ellipsoid = position.z_trans;
-  //  gps_msg.s_variance_m_s = 0.1;
-  //  gps_msg.c_variance_rad = 0.05;
-  //  gps_msg.fix_type = 5;
-  //  gps_msg.eph = 0.02; // 0.02;
-  //  gps_msg.epv = 0.02; // 0.02;
-  //  gps_msg.hdop = 1.0;
-  //  gps_msg.vdop = 1.0;
-  //  gps_msg.noise_per_ms = 101;
-  //  gps_msg.jamming_indicator = 35;
-  //  gps_msg.jamming_state = 0;
-  //  gps_msg.vel_m_s = 0.0;
-  //  gps_msg.vel_n_m_s = 0.0;
-  //  gps_msg.vel_e_m_s = 0.0;
-  //  gps_msg.vel_d_m_s = 0.0;
-  //  gps_msg.cog_rad = NAN;
-  //  gps_msg.vel_ned_valid = true;
-  //  gps_msg.timestamp_time_relative = 0;
-  //  gps_msg.satellites_used = 12;
-  //  gps_msg.heading = yaw_ned;
-  //  gps_msg.heading_offset = 0.0;
-  //  gps_msg.heading_accuracy = 0.2;
-  //  gps_pub_->publish(gps_msg);
-  //}
 };
 
 int main(int argc, char *argv[]) {

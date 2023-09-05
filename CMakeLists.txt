@@ -7,22 +7,17 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
-# uncomment the following section in order to fill in
-# further dependencies manually.
-# find_package(<dependency> REQUIRED)
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(px4_msgs REQUIRED)
-# find_package(vicon_receiver REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3)
 find_package(tf2_ros REQUIRED)
 
-# add_executable(bridge src/vicon_px4_bridge2.cpp)
-add_executable(bridge src/vicon_px4_bridge3.cpp)
+add_executable(bridge src/vicon_px4_bridge.cpp)
 ament_target_dependencies(bridge rclcpp std_msgs tf2 px4_msgs  tf2_ros Eigen3)
 
 ament_export_dependencies(eigen3_cmake_module)
