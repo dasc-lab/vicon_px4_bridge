@@ -21,7 +21,8 @@ find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3)
 find_package(tf2_ros REQUIRED)
 
-add_executable(bridge src/vicon_px4_bridge2.cpp)
+# add_executable(bridge src/vicon_px4_bridge2.cpp)
+add_executable(bridge src/vicon_px4_bridge3.cpp)
 ament_target_dependencies(bridge rclcpp std_msgs tf2 px4_msgs  tf2_ros Eigen3)
 
 ament_export_dependencies(eigen3_cmake_module)
