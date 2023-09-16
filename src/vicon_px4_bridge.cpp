@@ -33,19 +33,21 @@ public:
 
     position_sub_ =
         this->create_subscription<geometry_msgs::msg::TransformStamped>(
-            vicon_sub_name, 10,
+            vicon_sub_name, 1,
             std::bind(&ViconPX4Bridge::position_callback, this, _1));
 
     odometry_pub_ = this->create_publisher<px4_msgs::msg::VehicleOdometry>(
         px4_pub_name, 10);
 
-    timesync_sub_ = this->create_subscription<px4_msgs::msg::TimesyncStatus>(
-        timesync_sub_name, 10,
-        [this](const px4_msgs::msg::TimesyncStatus::UniquePtr msg) {
-          this->px4_timestamp_.store(msg->timestamp);
-          this->px4_server_timestamp_.store(
-              this->get_clock()->now().nanoseconds());
-        });
+
+
+    // timesync_sub_ = this->create_subscription<px4_msgs::msg::TimesyncStatus>(
+    //     timesync_sub_name, 10,
+    //     [this](const px4_msgs::msg::TimesyncStatus::UniquePtr msg) {
+    //       this->px4_timestamp_.store(msg->timestamp);
+    //       this->px4_server_timestamp_.store(
+    //           this->get_clock()->now().nanoseconds());
+    //     });
   }
 
 private:
@@ -58,6 +60,8 @@ private:
   rclcpp::Subscription<px4_msgs::msg::TimesyncStatus>::SharedPtr timesync_sub_;
   std::atomic<uint64_t> px4_timestamp_;
   std::atomic<uint64_t> px4_server_timestamp_;
+   
+  uint8_t counter_ = 0;
 
   uint64_t get_current_timestamp() {
     auto delta =
@@ -68,12 +72,22 @@ private:
 
   void
   position_callback(const geometry_msgs::msg::TransformStamped &vicon_msg) {
-    auto message = px4_msgs::msg::VehicleOdometry();
 
-    // timestamps
-    auto timestamp = get_current_timestamp();
-    message.timestamp = timestamp;
-    message.timestamp_sample = timestamp;
+    auto message = px4_msgs::msg::VehicleOdometry();
+    constexpr int downsample=3;
+    counter_++;
+    if (!(counter_ % downsample == 0))
+    {
+	    return;
+    }
+
+    // // timestamps
+    // auto timestamp = get_current_timestamp();
+    // message.timestamp = timestamp;
+    // message.timestamp_sample = timestamp;
+    //
+    message.timestamp = this->get_clock()->now().nanoseconds() / 1000;
+    message.timestamp_sample = message.timestamp;
 
     // pose frame
     message.pose_frame = px4_msgs::msg::VehicleOdometry::POSE_FRAME_NED;
