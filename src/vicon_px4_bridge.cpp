@@ -74,7 +74,7 @@ private:
   position_callback(const geometry_msgs::msg::TransformStamped &vicon_msg) {
 
     auto message = px4_msgs::msg::VehicleOdometry();
-    constexpr int downsample=3;
+    constexpr int downsample=2;
     counter_++;
     if (!(counter_ % downsample == 0))
     {
