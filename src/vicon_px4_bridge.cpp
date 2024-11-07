@@ -124,8 +124,8 @@ private:
 
     // position covariance
     for (size_t i = 0; i < 3; i++) {
-      message.position_variance[i] = 0.01;
-      message.orientation_variance[i] = 0.0523; // approx 3 degrees
+      message.position_variance[i] = std::pow(0.01, 2);
+      message.orientation_variance[i] = std::pow(0.0523, 2); // approx 3 degrees
       message.velocity_variance[i] = NAN;
     }
 
