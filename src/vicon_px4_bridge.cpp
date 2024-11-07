@@ -39,8 +39,6 @@ public:
     odometry_pub_ = this->create_publisher<px4_msgs::msg::VehicleOdometry>(
         px4_pub_name, 10);
 
-
-
     // timesync_sub_ = this->create_subscription<px4_msgs::msg::TimesyncStatus>(
     //     timesync_sub_name, 10,
     //     [this](const px4_msgs::msg::TimesyncStatus::UniquePtr msg) {
@@ -60,7 +58,7 @@ private:
   rclcpp::Subscription<px4_msgs::msg::TimesyncStatus>::SharedPtr timesync_sub_;
   std::atomic<uint64_t> px4_timestamp_;
   std::atomic<uint64_t> px4_server_timestamp_;
-   
+
   uint8_t counter_ = 0;
 
   uint64_t get_current_timestamp() {
@@ -74,11 +72,10 @@ private:
   position_callback(const geometry_msgs::msg::TransformStamped &vicon_msg) {
 
     auto message = px4_msgs::msg::VehicleOdometry();
-    constexpr int downsample=2;
+    constexpr int downsample = 2;
     counter_++;
-    if (!(counter_ % downsample == 0))
-    {
-	    return;
+    if (!(counter_ % downsample == 0)) {
+      return;
     }
 
     // // timestamps
